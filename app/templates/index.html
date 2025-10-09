@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Wheelchair Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Smart Wheelchair Dashboard 🦽</h1>
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Distance (cm)</th>
+      <th>Angle X</th>
+      <th>Angle Y</th>
+      <th>Alert</th>
+      <th>Timestamp</th>
+    </tr>
+    {% for row in data %}
+    <tr>
+      <td>{{ row[0] }}</td>
+      <td>{{ row[1] }}</td>
+      <td>{{ row[2] }}</td>
+      <td>{{ row[3] }}</td>
+      <td>{{ "🚨" if row[4] else "✅" }}</td>
+      <td>{{ row[5] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

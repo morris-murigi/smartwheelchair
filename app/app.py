@@ -1,121 +1,91 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, render_template, jsonify
 import psycopg2
+import os
+from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
-from dotenv import load_dotenv
-import os
 
-# Load environment variables
+# Load environment variables (for local testing)
 load_dotenv()
 
 app = Flask(__name__)
 
-# Database connection
-conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-cur = conn.cursor()
+DATABASE_URL = os.getenv("DATABASE_URL")
+ALERT_EMAIL = os.getenv("ALERT_EMAIL")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 
-# Create table if not exists
-cur.execute("""
-CREATE TABLE IF NOT EXISTS wheelchair_data (
-    id SERIAL PRIMARY KEY,
-    angle_x FLOAT,
-    angle_y FLOAT,
-    uvi FLOAT,
-    smoke FLOAT,
-    alert_flag BOOLEAN,
-    alert_email TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-""")
-conn.commit()
+# --- Helper: connect to DB ---
+def get_connection():
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-# Keep track of last values (for change detection)
-last_values = {"angle_x": None, "angle_y": None, "uvi": None, "smoke": None}
-
-def send_email_alert(to_email, subject, body):
-    """Send alert email using SMTP"""
+# --- Helper: send email alert ---
+def send_alert_email(message):
+    if not ALERT_EMAIL:
+        print("⚠️ ALERT_EMAIL not set")
+        return
     try:
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = os.getenv("EMAIL_USER")
-        msg["To"] = to_email
+        msg = MIMEText(message)
+        msg["Subject"] = "Smart Wheelchair Alert 🚨"
+        msg["From"] = SENDER_EMAIL
+        msg["To"] = ALERT_EMAIL
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(os.getenv("EMAIL_USER"), os.getenv("EMAIL_PASS"))
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
-        print("✅ Email alert sent.")
+        print("✅ Alert email sent!")
     except Exception as e:
         print("❌ Failed to send email:", e)
 
-@app.route("/")
-def home():
-    return render_template("dashboard.html")
+# --- Create table if not exists ---
+with get_connection() as conn:
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS wheelchair_data (
+            id SERIAL PRIMARY KEY,
+            distance FLOAT,
+            angle_x FLOAT,
+            angle_y FLOAT,
+            alert BOOLEAN DEFAULT FALSE,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    conn.commit()
 
-@app.route("/data", methods=["POST"])
+# --- Route: receive data from ESP ---
+@app.route("/api/data", methods=["POST"])
 def receive_data():
-    """Receive ESP32 data only if values change"""
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data"}), 400
 
+    distance = data.get("distance")
     angle_x = data.get("angle_x")
     angle_y = data.get("angle_y")
-    uvi = data.get("uvi")
-    smoke = data.get("smoke")
-    alert_email = data.get("alert_email")
+    alert = data.get("alert", False)
 
-    global last_values
-    changed = any([
-        last_values["angle_x"] != angle_x,
-        last_values["angle_y"] != angle_y,
-        last_values["uvi"] != uvi,
-        last_values["smoke"] != smoke
-    ])
-
-    if changed:
-        last_values.update({
-            "angle_x": angle_x,
-            "angle_y": angle_y,
-            "uvi": uvi,
-            "smoke": smoke
-        })
-
-        # Alert condition example
-        alert_flag = uvi > 8 or smoke > 500 or abs(angle_x) > 45
-
+    with get_connection() as conn:
+        cur = conn.cursor()
         cur.execute("""
-        INSERT INTO wheelchair_data (angle_x, angle_y, uvi, smoke, alert_flag, alert_email)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """, (angle_x, angle_y, uvi, smoke, alert_flag, alert_email))
+            INSERT INTO wheelchair_data (distance, angle_x, angle_y, alert)
+            VALUES (%s, %s, %s, %s);
+        """, (distance, angle_x, angle_y, alert))
         conn.commit()
 
-        if alert_flag and alert_email:
-            send_email_alert(
-                alert_email,
-                "🚨 Wheelchair Alert",
-                f"Abnormal condition detected:\nAngle X: {angle_x}\nAngle Y: {angle_y}\nUVI: {uvi}\nSmoke: {smoke}"
-            )
+    # Send alert email if necessary
+    if alert:
+        send_alert_email(f"Alert triggered! Distance: {distance}cm, Angle: ({angle_x}, {angle_y})")
 
-        return jsonify({"message": "Data updated and alert processed"}), 201
-    else:
-        return jsonify({"message": "No change detected"}), 200
+    return jsonify({"message": "Data stored"}), 200
 
-@app.route("/query", methods=["GET"])
-def query_data():
-    """Return recent data for dashboard"""
-    cur.execute("SELECT * FROM wheelchair_data ORDER BY id DESC LIMIT 10;")
-    rows = cur.fetchall()
-    result = []
-    for r in rows:
-        result.append({
-            "id": r[0],
-            "angle_x": r[1],
-            "angle_y": r[2],
-            "uvi": r[3],
-            "smoke": r[4],
-            "alert_flag": r[5],
-            "alert_email": r[6],
-            "timestamp": r[7].strftime("%Y-%m-%d %H:%M:%S")
-        })
-    return jsonify(result)
+# --- Route: view dashboard ---
+@app.route("/")
+def dashboard():
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM wheelchair_data ORDER BY timestamp DESC LIMIT 10;")
+        rows = cur.fetchall()
+    return render_template("index.html", data=rows)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run(host="0.0.0.0", port=5000)
