@@ -1,11 +1,11 @@
-# Environment variables
+# Environment variables (secrets)
 .env
 
 # Virtual environment
 app/venv/
 venv/
 
-# Python cache
+# Python cache and temp files
 __pycache__/
 *.pyc
 *.pyo
@@ -15,3 +15,7 @@ test_*.py
 
 # Logs
 *.log
+
+# IDE files
+.vscode/
+.idea/
