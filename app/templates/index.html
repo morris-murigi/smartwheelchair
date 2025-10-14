@@ -1,31 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Smart Wheelchair Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <title>Smart Wheelchair Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #0055a5;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        table {
+            width: 90%;
+            margin: 2rem auto;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #0077cc;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .alert-true {
+            color: red;
+            font-weight: bold;
+        }
+        .alert-false {
+            color: green;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+    </style>
 </head>
 <body>
-  <h1>Smart Wheelchair Dashboard 🦽</h1>
-  <table>
-    <tr>
-      <th>ID</th>
-      <th>Distance (cm)</th>
-      <th>Angle X</th>
-      <th>Angle Y</th>
-      <th>Alert</th>
-      <th>Timestamp</th>
-    </tr>
-    {% for row in data %}
-    <tr>
-      <td>{{ row[0] }}</td>
-      <td>{{ row[1] }}</td>
-      <td>{{ row[2] }}</td>
-      <td>{{ row[3] }}</td>
-      <td>{{ "🚨" if row[4] else "✅" }}</td>
-      <td>{{ row[5] }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+    <header>
+        <h1>🚀 Smart Wheelchair Dashboard</h1>
+        <p>Live Data from ESP32 Sensors</p>
+    </header>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Pitch (°)</th>
+                <th>Roll (°)</th>
+                <th>Gas Level</th>
+                <th>UV Index</th>
+                <th>Alert</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ "%.2f"|format(row[1]) }}</td>
+                <td>{{ "%.2f"|format(row[2]) }}</td>
+                <td>{{ "%.2f"|format(row[3]) }}</td>
+                <td>{{ "%.2f"|format(row[4]) }}</td>
+                <td class="{{ 'alert-true' if row[5] else 'alert-false' }}">
+                    {{ '⚠️ Yes' if row[5] else '✅ No' }}
+                </td>
+                <td>{{ row[6] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <footer>
+        © 2025 Smart Wheelchair | Powered by Flask + Render
+    </footer>
 </body>
 </html>
