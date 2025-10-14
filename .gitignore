@@ -1,0 +1,6 @@
+.env
+app/venv/
+test_env.py
+test_twilio.py
+__pycache__/
+*.pyc
