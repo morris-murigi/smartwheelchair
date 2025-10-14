@@ -8,10 +8,6 @@ import datetime
 
 # Load environment variables (for local testing)
 load_dotenv()
-print("DEBUG: TWILIO_ACCOUNT_SID =", os.getenv("TWILIO_ACCOUNT_SID"))
-print("DEBUG: TWILIO_AUTH_TOKEN =", os.getenv("TWILIO_AUTH_TOKEN"))
-print("DEBUG: TWILIO_WHATSAPP_NUMBER =", os.getenv("TWILIO_WHATSAPP_NUMBER"))
-print("DEBUG: ALERT_PHONE_NUMBER =", os.getenv("ALERT_PHONE_NUMBER"))
 
 app = Flask(__name__)
 
