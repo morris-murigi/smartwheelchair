@@ -104,16 +104,18 @@ def latest():
         conn.close()
         if row:
             return jsonify({
-                "timestamp": row[0],
+                "id": row[0],
                 "pitch": row[1],
                 "roll": row[2],
                 "air_quality": row[3],
                 "uv_index": row[4],
-                "alert_flag": row[5]
+                "alert_flag": row[5],
+                "timestamp": row[6]
             }), 200
         return jsonify({"status": "no data"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
