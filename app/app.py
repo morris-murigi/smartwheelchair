@@ -43,9 +43,10 @@ with get_connection() as conn:
     cur.execute("""
         CREATE TABLE IF NOT EXISTS wheelchair_data (
             id SERIAL PRIMARY KEY,
-            distance FLOAT,
-            angle_x FLOAT,
-            angle_y FLOAT,
+            pitch FLOAT,
+            roll FLOAT,
+            gas_level FLOAT,
+            uv_index FLOAT,
             alert BOOLEAN DEFAULT FALSE,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -59,22 +60,36 @@ def receive_data():
     if not data:
         return jsonify({"error": "No data"}), 400
 
-    distance = data.get("distance")
-    angle_x = data.get("angle_x")
-    angle_y = data.get("angle_y")
-    alert = data.get("alert", False)
+    # Match your ESP32 JSON keys
+    pitch = data.get("pitch")
+    roll = data.get("roll")
+    gasLevel = data.get("gasLevel")
+    uvIndex = data.get("uvIndex")
+    alertFlag = data.get("alertFlag", False)
 
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO wheelchair_data (distance, angle_x, angle_y, alert)
-            VALUES (%s, %s, %s, %s);
-        """, (distance, angle_x, angle_y, alert))
+            CREATE TABLE IF NOT EXISTS wheelchair_data (
+                id SERIAL PRIMARY KEY,
+                pitch FLOAT,
+                roll FLOAT,
+                gas_level FLOAT,
+                uv_index FLOAT,
+                alert BOOLEAN DEFAULT FALSE,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         conn.commit()
 
-    # Send alert email if necessary
-    if alert:
-        send_alert_email(f"Alert triggered! Distance: {distance}cm, Angle: ({angle_x}, {angle_y})")
+        cur.execute("""
+            INSERT INTO wheelchair_data (pitch, roll, gas_level, uv_index, alert)
+            VALUES (%s, %s, %s, %s, %s);
+        """, (pitch, roll, gasLevel, uvIndex, alertFlag))
+        conn.commit()
+
+    if alertFlag:
+        send_alert_email(f"⚠️ Alert Triggered!\nPitch: {pitch}, Roll: {roll}, Gas: {gasLevel}, UV: {uvIndex}")
 
     return jsonify({"message": "Data stored"}), 200
 
