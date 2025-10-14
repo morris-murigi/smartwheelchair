@@ -2,17 +2,47 @@ from flask import Flask, request, render_template, jsonify
 import psycopg2
 import os
 from dotenv import load_dotenv
+from twilio.rest import Client
+from twilio.base.exceptions import TwilioRestException
+import datetime
 
 # Load environment variables (for local testing)
 load_dotenv()
+print("DEBUG: TWILIO_ACCOUNT_SID =", os.getenv("TWILIO_ACCOUNT_SID"))
+print("DEBUG: TWILIO_AUTH_TOKEN =", os.getenv("TWILIO_AUTH_TOKEN"))
+print("DEBUG: TWILIO_WHATSAPP_NUMBER =", os.getenv("TWILIO_WHATSAPP_NUMBER"))
+print("DEBUG: ALERT_PHONE_NUMBER =", os.getenv("ALERT_PHONE_NUMBER"))
 
 app = Flask(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
+ALERT_PHONE_NUMBER = os.getenv("ALERT_PHONE_NUMBER")
+
+# Initialize Twilio client
+twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
+print("DEBUG: twilio_client initialized =", twilio_client is not None)
 
 # --- Helper: connect to DB ---
 def get_connection():
     return psycopg2.connect(DATABASE_URL, sslmode="require" if "localhost" not in DATABASE_URL else "disable")
+
+# --- Helper: send WhatsApp alert ---
+def send_whatsapp_alert(message):
+    if not all([twilio_client, TWILIO_WHATSAPP_NUMBER, ALERT_PHONE_NUMBER]):
+        print("⚠️ Twilio configuration incomplete")
+        return
+    try:
+        twilio_client.messages.create(
+            body=message,
+            from_=TWILIO_WHATSAPP_NUMBER,  # e.g., whatsapp:+14155238886
+            to=ALERT_PHONE_NUMBER  # e.g., whatsapp:+254792902821
+        )
+        print("✅ WhatsApp alert sent!")
+    except TwilioRestException as e:
+        print("❌ Failed to send WhatsApp alert:", e)
 
 # --- Create table if not exists (only once at startup) ---
 with get_connection() as conn:
@@ -48,6 +78,18 @@ def receive_data():
     if None in [pitch, roll, gas_level, uv_index]:
         return jsonify({"error": "Missing required sensor data"}), 400
 
+    # Check for critical conditions
+    alert_messages = []
+    if abs(pitch) > 10 or abs(roll) > 10:
+        alert_messages.append(f"High Tilt: Pitch {pitch:.2f}°, Roll {roll:.2f}°")
+    if gas_level > 100:
+        alert_messages.append(f"High Gas Level: {gas_level:.2f}")
+    if uv_index > 3:
+        alert_messages.append(f"High UV Index: {uv_index:.2f}")
+    if alert_flag:
+        alert_messages.append("ESP32 Alert Triggered")
+
+    # Store data in DB
     try:
         with get_connection() as conn:
             cur = conn.cursor()
@@ -58,6 +100,11 @@ def receive_data():
             conn.commit()
     except Exception as e:
         return jsonify({"error": f"Database insertion failed: {str(e)}"}), 500
+
+    # Send WhatsApp alert if critical conditions exist
+    if alert_messages:
+        message = f"🚨 Wheelchair Alert at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:\n{', '.join(alert_messages)}"
+        send_whatsapp_alert(message)
 
     return jsonify({"message": "Data stored successfully"}), 200
 

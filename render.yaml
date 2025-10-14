@@ -2,6 +2,7 @@ services:
   - type: web
     name: smartwheelchair
     env: python
+    region: frankfurt  # Matches your DB region
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app.app:app
     envVars:
@@ -9,12 +10,16 @@ services:
         fromDatabase:
           name: smartwheelchair-db
           property: connectionString
-      - key: ALERT_EMAIL
+      - key: PYTHON_VERSION
+        value: 3.8
+      - key: TWILIO_ACCOUNT_SID
         sync: false
-      - key: SENDER_EMAIL
+      - key: TWILIO_AUTH_TOKEN
         sync: false
-      - key: SENDER_PASSWORD
+      - key: TWILIO_WHATSAPP_NUMBER
         sync: false
-
+      - key: ALERT_PHONE_NUMBER
+        sync: false
 databases:
   - name: smartwheelchair-db
+    region: frankfurt
