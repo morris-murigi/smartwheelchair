@@ -1,26 +1,137 @@
+/* General body styling */
 body {
-  font-family: Arial, sans-serif;
-  margin: 40px;
-  background: #f3f4f6;
-  color: #333;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background-color: #f4f6f8;
+    margin: 0;
+    padding: 0;
 }
-h1 {
-  text-align: center;
+
+/* Fixed header for dashboard */
+header {
+    background-color: #0055a5;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
 }
+
+/* Main content padding for fixed header */
+main {
+    margin-top: 80px;
+    padding: 1rem;
+}
+
+/* Overview cards section */
+.overview {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin: 2rem 0;
+}
+
+.card {
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem;
+    text-align: center;
+    flex: 1 1 200px;
+    max-width: 250px;
+}
+
+.card h3 {
+    margin: 0.5rem 0;
+}
+
+.card .value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.card .gauge {
+    height: 100px;
+    width: 100%;
+    position: relative;
+}
+
+/* Graph containers */
+.graphs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.graph-container {
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    width: 90%;
+    max-width: 800px;
+}
+
+/* Data table styling */
 table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 90%;
+    margin: 2rem auto;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+
 th, td {
-  padding: 12px;
-  text-align: center;
-  border-bottom: 1px solid #ddd;
+    padding: 12px 16px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
 }
+
 th {
-  background-color: #007bff;
-  color: white;
+    background-color: #0077cc;
+    color: white;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+.alert-true {
+    color: red;
+    font-weight: bold;
+}
+
+.alert-false {
+    color: green;
+}
+
+/* Footer styling */
+footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* No data state */
+.no-data {
+    text-align: center;
+    color: #555;
+    margin: 2rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .overview {
+        flex-direction: column;
+    }
+    .graph-container {
+        width: 100%;
+    }
+    table {
+        width: 100%;
+    }
 }

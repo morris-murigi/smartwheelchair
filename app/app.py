@@ -67,12 +67,38 @@ def dashboard():
     try:
         with get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT * FROM wheelchair_data ORDER BY timestamp DESC LIMIT 100;")  # Increased limit for graphs
+            cur.execute("SELECT * FROM wheelchair_data ORDER BY timestamp DESC LIMIT 100;")
             rows = cur.fetchall()
     except Exception as e:
         print("❌ Dashboard DB query failed:", e)
         rows = []  # Fallback to empty data
     return render_template("index.html", data=rows)
 
+# --- Route: get latest data as JSON for polling ---
+@app.route("/api/latest")
+def get_latest_data():
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM wheelchair_data ORDER BY timestamp DESC LIMIT 100;")
+            rows = cur.fetchall()
+        # Convert rows to list of dicts for JSON
+        data = [
+            {
+                "id": row[0],
+                "pitch": row[1],
+                "roll": row[2],
+                "gas_level": row[3],
+                "uv_index": row[4],
+                "alert": row[5],
+                "timestamp": row[6].isoformat()  # Convert timestamp to string
+            }
+            for row in rows
+        ]
+        return jsonify({"data": data})
+    except Exception as e:
+        print("❌ Latest data query failed:", e)
+        return jsonify({"data": []}), 500
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)  # Added debug=True for local dev
+    app.run(host="0.0.0.0", port=5000, debug=True)
