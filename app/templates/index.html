@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Smart Wheelchair Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chart.js CDN for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: "Segoe UI", Arial, sans-serif;
@@ -16,6 +18,57 @@
             color: white;
             padding: 1rem;
             text-align: center;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+        main {
+            margin-top: 80px; /* Space for fixed header */
+            padding: 1rem;
+        }
+        .overview {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin: 2rem 0;
+        }
+        .card {
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem;
+            text-align: center;
+            flex: 1 1 200px;
+            max-width: 250px;
+        }
+        .card h3 {
+            margin: 0.5rem 0;
+        }
+        .card .value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .card .gauge {
+            height: 100px;
+            width: 100%;
+            position: relative;
+        }
+        /* Simple CSS gauge placeholder; enhance with Canvas/Chart.js if needed */
+        .graphs {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .graph-container {
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            width: 90%;
+            max-width: 800px;
         }
         table {
             width: 90%;
@@ -49,45 +102,179 @@
             font-size: 0.9rem;
             color: #555;
         }
+        /* Media queries for responsiveness */
+        @media (max-width: 768px) {
+            .overview {
+                flex-direction: column;
+            }
+            .graph-container {
+                width: 100%;
+            }
+            table {
+                width: 100%;
+            }
+        }
+        /* No data state */
+        .no-data {
+            text-align: center;
+            color: #555;
+            margin: 2rem;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>🚀 Smart Wheelchair Dashboard</h1>
-        <p>Live Data from ESP32 Sensors</p>
+        <p>Live Data from ESP32 Sensors | Last Updated: {{ data[0][6] if data else 'Awaiting data' }}</p>
     </header>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Pitch (°)</th>
-                <th>Roll (°)</th>
-                <th>Gas Level</th>
-                <th>UV Index</th>
-                <th>Alert</th>
-                <th>Timestamp</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in data %}
-            <tr>
-                <td>{{ row[0] }}</td>
-                <td>{{ "%.2f"|format(row[1]) }}</td>
-                <td>{{ "%.2f"|format(row[2]) }}</td>
-                <td>{{ "%.2f"|format(row[3]) }}</td>
-                <td>{{ "%.2f"|format(row[4]) }}</td>
-                <td class="{{ 'alert-true' if row[5] else 'alert-false' }}">
-                    {{ '⚠️ Yes' if row[5] else '✅ No' }}
-                </td>
-                <td>{{ row[6] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <main>
+        {% if data %}
+        <!-- Overview Cards -->
+        <section class="overview">
+            <div class="card">
+                <h3>Pitch & Roll</h3>
+                <p class="value">{{ "%.2f"|format(data[0][1]) }}° / {{ "%.2f"|format(data[0][2]) }}°</p>
+                <div class="gauge"><!-- Placeholder; could use Chart.js radial gauge --></div>
+                <p {% if data[0][1] | abs > 10 or data[0][2] | abs > 10 %}style="color: red;"{% endif %}>
+                    {{ 'Tilted' if data[0][1] | abs > 10 or data[0][2] | abs > 10 else 'Stable' }}
+                </p>
+            </div>
+            <div class="card">
+                <h3>Gas Level</h3>
+                <p class="value">{{ "%.2f"|format(data[0][3]) }}</p>
+                <div class="gauge"><!-- Placeholder --></div>
+                <p {% if data[0][3] > 100 %}style="color: red;"{% endif %}>
+                    {{ 'High' if data[0][3] > 100 else 'Safe' }}
+                </p>
+            </div>
+            <div class="card">
+                <h3>UV Index</h3>
+                <p class="value">{{ "%.2f"|format(data[0][4]) }}</p>
+                <div class="gauge"><!-- Placeholder --></div>
+                <p {% if data[0][4] > 3 %}style="color: red;"{% endif %}>
+                    {{ 'High' if data[0][4] > 3 else 'Low' }}
+                </p>
+            </div>
+            <div class="card">
+                <h3>Alert Status</h3>
+                <p class="value {{ 'alert-true' if data[0][5] else 'alert-false' }}">
+                    {{ '⚠️ Yes' if data[0][5] else '✅ No' }}
+                </p>
+            </div>
+        </section>
+
+        <!-- Graphs Section -->
+        <section class="graphs">
+            <div class="graph-container">
+                <h2>Pitch & Roll Over Time</h2>
+                <canvas id="pitchRollChart"></canvas>
+            </div>
+            <div class="graph-container">
+                <h2>Gas Level Over Time</h2>
+                <canvas id="gasChart"></canvas>
+            </div>
+            <div class="graph-container">
+                <h2>UV Index Over Time</h2>
+                <canvas id="uvChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Data Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Pitch (°)</th>
+                    <th>Roll (°)</th>
+                    <th>Gas Level</th>
+                    <th>UV Index</th>
+                    <th>Alert</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ "%.2f"|format(row[1]) }}</td>
+                    <td>{{ "%.2f"|format(row[2]) }}</td>
+                    <td>{{ "%.2f"|format(row[3]) }}</td>
+                    <td>{{ "%.2f"|format(row[4]) }}</td>
+                    <td class="{{ 'alert-true' if row[5] else 'alert-false' }}">
+                        {{ '⚠️ Yes' if row[5] else '✅ No' }}
+                    </td>
+                    <td>{{ row[6] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">
+            <h2>No Data Available</h2>
+            <p>Awaiting sensor data from ESP32. Please check your device connection.</p>
+        </div>
+        {% endif %}
+    </main>
 
     <footer>
         © 2025 Smart Wheelchair | Powered by Flask + Render
     </footer>
+
+    <!-- JavaScript for Charts -->
+    <script>
+        // Prepare data from Jinja template
+        const data = {{ data | tojson | safe }};
+        const labels = data.map(row => row[6]);  // Timestamps
+        const pitchData = data.map(row => row[1]);
+        const rollData = data.map(row => row[2]);
+        const gasData = data.map(row => row[3]);
+        const uvData = data.map(row => row[4]);
+
+        // Pitch & Roll Chart
+        new Chart(document.getElementById('pitchRollChart'), {
+            type: 'line',
+            data: {
+                labels: labels.reverse(),  // Reverse for chronological order
+                datasets: [
+                    { label: 'Pitch (°)', data: pitchData.reverse(), borderColor: '#0077cc', fill: false },
+                    { label: 'Roll (°)', data: rollData.reverse(), borderColor: '#00cc77', fill: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+
+        // Gas Level Chart
+        new Chart(document.getElementById('gasChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'Gas Level', data: gasData.reverse(), borderColor: '#ff9900', fill: false }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+
+        // UV Index Chart
+        new Chart(document.getElementById('uvChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'UV Index', data: uvData.reverse(), borderColor: '#cc00ff', fill: false }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    </script>
 </body>
 </html>
