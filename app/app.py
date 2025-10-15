@@ -123,6 +123,29 @@ def latest():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/data-all', methods=['GET'])
+def data_all():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM wheelchair_data ORDER BY timestamp DESC LIMIT 20")
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        data_list = [{
+            "id": row[0],
+            "pitch": row[1],
+            "roll": row[2],
+            "air_quality": row[3],
+            "uv_index": row[4],
+            "alert_flag": row[5],
+            "timestamp": str(row[6])
+        } for row in rows]
+        
+        return jsonify(data_list), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

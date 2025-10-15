@@ -267,9 +267,9 @@
 
         // Polling function
         function pollData() {
-            fetch('/api/latest')
+            fetch('/api/data-all')  // New endpoint for all data
                 .then(response => response.json())
-                .then(result => updateDashboard([result])) // Adjust for single latest record
+                .then(result => updateDashboard(result))
                 .catch(error => console.error('Polling error:', error));
         }
 
