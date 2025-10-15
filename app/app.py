@@ -88,7 +88,17 @@ def data():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM wheelchair_data ORDER BY timestamp DESC LIMIT 20")
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('index.html', data=rows)
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return render_template('index.html', data=[])
 
 @app.route('/api/latest', methods=['GET'])
 def latest():
