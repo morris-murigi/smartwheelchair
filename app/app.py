@@ -68,7 +68,7 @@ def data():
 
         if message:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Only for WhatsApp
-            alert_message = f"🚨 Wheelchair Alert at {timestamp} EAT: {', '.join(message)}"
+            alert_message = f"🚨 Wheelchair Alert at {timestamp} UTC: {', '.join(message)}"
             send_whatsapp_alert(alert_message)
 
         # Insert into database - let timestamp auto-generate
