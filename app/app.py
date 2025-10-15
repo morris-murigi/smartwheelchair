@@ -55,7 +55,6 @@ def data():
 
         # Alert logic (same as ESP32)
         message = []
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if abs(pitch) > PITCH_THRESHOLD:
             message.append(f"High Tilt: Pitch {pitch:.2f}°")
         if abs(roll) > ROLL_THRESHOLD:
@@ -68,19 +67,17 @@ def data():
             message.append("ESP32 Alert Triggered")
 
         if message:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Only for WhatsApp
             alert_message = f"🚨 Wheelchair Alert at {timestamp} EAT: {', '.join(message)}"
             send_whatsapp_alert(alert_message)
 
-        # Insert into database
+        # Insert into database - let timestamp auto-generate
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO wheelchair_data (timestamp, pitch, roll, air_quality, uv_index, alert_flag)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (timestamp, pitch, roll, air_quality, uv_index, alert_flag)
-        )
+        cursor.execute("""
+            INSERT INTO wheelchair_data (pitch, roll, air_quality, uv_index, alert_flag)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (pitch, roll, air_quality, uv_index, alert_flag))
         conn.commit()
         cursor.close()
         conn.close()
